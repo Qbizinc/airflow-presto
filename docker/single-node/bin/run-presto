@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -xeuo pipefail
+
+if [[ ! -d /usr/lib/presto/etc ]]; then
+    if [[ -d /etc/presto ]]; then
+        ln -s /etc/presto /usr/lib/presto/etc
+    else
+        ln -s /usr/lib/presto/default/etc /usr/lib/presto/etc
+    fi
+fi
+
+set +e
+grep -s -q 'node.id' /usr/lib/presto/etc/node.properties
+NODE_ID_EXISTS=$?
+set -e
+
+NODE_ID=""
+if [[ ${NODE_ID_EXISTS} != 0 ]] ; then
+    NODE_ID="-Dnode.id=${HOSTNAME}"
+fi
+
+if [ -z "${QUERY}" ]; then   
+    exec /usr/lib/presto/bin/launcher run ${NODE_ID} "$@" 
+else   
+    exec /usr/lib/presto/bin/launcher run ${NODE_ID} "$@" &
+	sleep 40
+	exec presto --session query_max_execution_time=1h --catalog hive --execute "$QUERY" 
+fi
+
