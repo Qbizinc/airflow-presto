@@ -20,7 +20,7 @@ if [[ ${NODE_ID_EXISTS} != 0 ]] ; then
     NODE_ID="-Dnode.id=${HOSTNAME}"
 fi
 
-if [ -z "${QUERY}" ]; then   
+if [ -z "${QUERY-}" ]; then
     exec /usr/lib/presto/bin/launcher run ${NODE_ID} "$@" 
 else   
     exec /usr/lib/presto/bin/launcher run ${NODE_ID} "$@" &
