@@ -3,7 +3,8 @@ from airflow_presto.operators.presto_kubernetes_operator import PrestoKubernetes
 
 
 class PrestoKubernetesPlugin(AirflowPlugin):
-    name = "PrestoKubernetesPlugin"
+    # from airflow.operators.airflow_presto import PrestoKubernetesOperator
+    name = "airflow_presto"
     operators = [PrestoKubernetesOperator]
     # Leave in for explicitness
     hooks = []
