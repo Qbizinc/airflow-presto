@@ -14,5 +14,5 @@ docker build -f Dockerfile -t presto-airflow --build-arg PRESTO_VERSION={version
 Run Presto
 
 ```bash
-docker run -p 8080:8080 --name presto presto-airflow
+docker run --env QUERY="Select 1;" presto-airflow
 ```

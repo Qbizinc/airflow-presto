@@ -20,11 +20,20 @@ if [[ ${NODE_ID_EXISTS} != 0 ]] ; then
     NODE_ID="-Dnode.id=${HOSTNAME}"
 fi
 
+if [ -z "${OUTPUT_CMD-}" ]; then
+  OUTPUT_CMD="aws s3 cp"
+
 if [ -z "${QUERY-}" ]; then
-    exec /usr/lib/presto/bin/launcher run ${NODE_ID} "$@" 
-else   
+    echo "env var QUERY not set"
+    exit 1
+else
     exec /usr/lib/presto/bin/launcher run ${NODE_ID} "$@" &
-	sleep 40
-	exec presto --session query_max_execution_time=1h --catalog hive --execute "$QUERY" 
+    sleep 40
+    if [ -z "${OUTPUT_PATH-}" ]; then
+        exec presto --session query_max_execution_time=1h --catalog hive --execute "$QUERY"
+    else
+        exec presto --session query_max_execution_time=1h --catalog hive --execute "$QUERY" --output-format CSV_HEADER > out.csv
+        ${OUTPUT_CMD} out.csv ${OUTPUT_PATH}
+    fi
 fi
 
