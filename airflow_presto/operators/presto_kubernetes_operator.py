@@ -165,7 +165,6 @@ class PrestoKubernetesOperator(KubernetesPodOperator):
                  priority_class_name=None,
                  *args,
                  **kwargs):
-        super(PrestoKubernetesOperator, self).__init__(*args, **kwargs)
         self.sql = sql
         self.output_path = output_path
         self.output_cmd = output_cmd
@@ -208,6 +207,7 @@ class PrestoKubernetesOperator(KubernetesPodOperator):
         self.pod_template_file = pod_template_file
         self.priority_class_name = priority_class_name
         self.name = self._set_name(name)
+        super(PrestoKubernetesOperator, self).__init__(*args, **kwargs)
 
     def execute(self, context):
         self.log.info('Executing: %s', self.sql)
