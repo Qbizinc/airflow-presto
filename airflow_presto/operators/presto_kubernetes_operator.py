@@ -125,89 +125,28 @@ class PrestoKubernetesOperator(KubernetesPodOperator):
                  sql,
                  output_path=None,
                  output_cmd=None,
-                 namespace=None,
-                 image=None,
-                 name=None,
                  cmds=None,
                  arguments=None,
-                 ports=None,
-                 volume_mounts=None,
-                 volumes=None,
                  env_vars=None,
-                 secrets=None,
-                 in_cluster=None,
-                 cluster_context=None,
-                 labels=None,
-                 reattach_on_restart=True,
-                 startup_timeout_seconds=120,
-                 get_logs=True,
-                 image_pull_policy='IfNotPresent',
-                 annotations=None,
-                 resources=None,
-                 affinity=None,
-                 config_file=None,
-                 node_selectors=None,
-                 image_pull_secrets=None,
-                 service_account_name='default',
-                 is_delete_operator_pod=False,
-                 hostnetwork=False,
-                 tolerations=None,
-                 configmaps=None,
-                 security_context=None,
-                 pod_runtime_info_envs=None,
-                 dnspolicy=None,
-                 schedulername=None,
-                 full_pod_spec=None,
-                 init_containers=None,
-                 log_events_on_failure=False,
-                 do_xcom_push=False,
                  pod_template_file=None,
-                 priority_class_name=None,
+                 config_file=None,
                  *args,
                  **kwargs):
+        super(PrestoKubernetesOperator, self).__init__(*args,
+                                                       cmds=cmds,
+                                                       arguments=arguments,
+                                                       env_vars=env_vars,
+                                                       pod_template_file=pod_template_file,
+                                                       config_file=config_file,
+                                                       **kwargs)
         self.sql = sql
         self.output_path = output_path
         self.output_cmd = output_cmd
-        self.pod = None
-        self.do_xcom_push = do_xcom_push
-        self.image = image
-        self.namespace = namespace
         self.cmds = cmds or []
         self.arguments = arguments or []
-        self.labels = labels or {}
-        self.startup_timeout_seconds = startup_timeout_seconds
         self.env_vars = env_vars or {}
-        self.ports = ports or []
-        self.volume_mounts = volume_mounts or []
-        self.volumes = volumes or []
-        self.secrets = secrets or []
-        self.in_cluster = in_cluster
-        self.cluster_context = cluster_context
-        self.reattach_on_restart = reattach_on_restart
-        self.get_logs = get_logs
-        self.image_pull_policy = image_pull_policy
-        self.node_selectors = node_selectors or {}
-        self.annotations = annotations or {}
-        self.affinity = affinity or {}
-        self.resources = self._set_resources(resources)
         self.config_file = config_file
-        self.image_pull_secrets = image_pull_secrets
-        self.service_account_name = service_account_name
-        self.is_delete_operator_pod = is_delete_operator_pod
-        self.hostnetwork = hostnetwork
-        self.tolerations = tolerations or []
-        self.configmaps = configmaps or []
-        self.security_context = security_context or {}
-        self.pod_runtime_info_envs = pod_runtime_info_envs or []
-        self.dnspolicy = dnspolicy
-        self.schedulername = schedulername
-        self.full_pod_spec = full_pod_spec
-        self.init_containers = init_containers or []
-        self.log_events_on_failure = log_events_on_failure
         self.pod_template_file = pod_template_file
-        self.priority_class_name = priority_class_name
-        self.name = self._set_name(name)
-        super(PrestoKubernetesOperator, self).__init__(*args, **kwargs)
 
     def execute(self, context):
         self.log.info('Executing: %s', self.sql)
