@@ -32,3 +32,4 @@ TO-DO:
 
 * Add multi-node support to presto docker image
 * Use `--file input.sql` from presto cli to pass an input file instead of the inline argument when a file is passed
+* Package the module to make it pip-installable.

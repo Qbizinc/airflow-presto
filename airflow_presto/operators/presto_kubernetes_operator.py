@@ -154,7 +154,9 @@ class PrestoKubernetesOperator(KubernetesPodOperator):
         self.env_vars['QUERY'] = self.sql
         if self.output_path:
             self.env_vars['OUTPUT_PATH'] = self.output_path
+            self.log.info('OUTPUT_PATH: %s', self.output_path)
         if self.output_cmd:
             self.env_vars['OUTPUT_CMD'] = self.output_cmd
+            self.log.info('OUTPUT_CMD: %s', self.output_cmd)
         super().execute(context)
 
