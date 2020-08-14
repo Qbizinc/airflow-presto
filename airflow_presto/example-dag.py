@@ -1,7 +1,7 @@
 import os
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
-from operators.airflow_presto import PrestoKubernetesOperator
+from operators.presto_kubernetes_operator import PrestoKubernetesOperator
 from datetime import datetime, timedelta
 
 
