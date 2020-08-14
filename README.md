@@ -3,8 +3,22 @@
 ## Airflow plugin
 
 ### Install
-Copy directory `airflow_presto/` to plugins/ folder in your airflow deployment.
+Copy directory `airflow_presto/operators/` to your plugins/ folder in your airflow deployment.
+Your directory structure should look similar to this:
 
+```
+.
+├── airflow.cfg
+├── dags
+│   └── example-dag.py
+└── plugins
+    └── operators
+       └── presto_kubernetes_operator.py
+
+```
+
+There is an example of how to use the operator at:
+`airflow_presto/example-dag.py`
 
 ## Presto
 #### On-Demand Presto cluster deployment for Airflow.
