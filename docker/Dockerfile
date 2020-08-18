@@ -6,6 +6,7 @@ ARG PRESTO_VERSION=339
 RUN \
     set -xeu && \
     yum -y -q update && \
+    yum -y -q install epel-release && \
     yum -y -q install java-11-openjdk-devel less wget curl unzip && \
     yum -q clean all && \
     rm -rf /var/cache/yum && \
@@ -26,11 +27,8 @@ COPY default/ /usr/lib/presto/default
 RUN chown -R presto:presto /usr/lib/presto
 RUN ls -la /usr/bin/presto
 
-RUN mkdir -p /usr/lib/awscli && \
-    chown -R "presto:presto" /usr/lib/awscli/
-RUN wget -q -O /usr/lib/awscli/awscliv2.zip https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
-RUN unzip /usr/lib/awscli/awscliv2.zip
-RUN /usr/lib/awscli/aws/install
+RUN pip install --upgrade pip && \
+    pip install awscli
 
 EXPOSE 8080
 USER presto:presto
