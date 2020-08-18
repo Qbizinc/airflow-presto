@@ -7,7 +7,7 @@ RUN \
     set -xeu && \
     yum -y -q update && \
     yum -y -q install epel-release && \
-    yum -y -q install java-11-openjdk-devel less wget curl unzip && \
+    yum -y -q install java-11-openjdk-devel less wget curl unzip python-pip && \
     yum -q clean all && \
     rm -rf /var/cache/yum && \
     rm -rf /tmp/* /var/tmp/* && \
