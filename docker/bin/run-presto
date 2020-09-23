@@ -1,40 +1,13 @@
 #!/bin/bash
 
-set -xeuo pipefail
-
-if [[ ! -d /usr/lib/presto/etc ]]; then
-    if [[ -d /etc/presto ]]; then
-        ln -s /etc/presto /usr/lib/presto/etc
-    else
-        ln -s /usr/lib/presto/default/etc /usr/lib/presto/etc
-    fi
-fi
-
-set +e
-grep -s -q 'node.id' /usr/lib/presto/etc/node.properties
-NODE_ID_EXISTS=$?
-set -e
-
-NODE_ID=""
-if [[ ${NODE_ID_EXISTS} != 0 ]] ; then
-    NODE_ID="-Dnode.id=${HOSTNAME}"
-fi
-
-if [ -z "${OUTPUT_CMD-}" ]; then
-  OUTPUT_CMD="aws s3 cp"
-fi
-
-if [ -z "${QUERY-}" ]; then
-    echo "env var QUERY not set"
-    exit 1
+NODE_ID=$(uuidgen)
+ARGS="-Dnode.id=${NODE_ID}"
+#SERVICE_HOST=$(dig  +short -t srv  coordinator.coordinator | cut -f4 -d\  )
+if [[ $MODE == "WORKER" ]]
+  then
+  DISCOVERY_URI="-Ddiscovery.uri=http://${COORDINATOR_HOST_PORT}/"
+  /usr/lib/presto/bin/launcher run $ARGS $DISCOVERY_URI \
+    --etc-dir=/usr/lib/presto/default/etc/worker
 else
-    exec /usr/lib/presto/bin/launcher run ${NODE_ID} "$@" &
-    sleep 40
-    if [ -z "${OUTPUT_PATH-}" ]; then
-        exec presto --session query_max_execution_time=1h --catalog hive --execute "$QUERY"
-    else
-        presto --session query_max_execution_time=1h --catalog hive --execute "$QUERY" --output-format CSV_HEADER > /tmp/out.csv
-        exec ${OUTPUT_CMD} /tmp/out.csv ${OUTPUT_PATH}
-    fi
+  /usr/lib/presto/bin/launcher run $ARGS --etc-dir=/usr/lib/presto/default/etc/coordinator
 fi
-
