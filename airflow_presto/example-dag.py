@@ -1,8 +1,23 @@
-import os
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
-from operators.presto_kubernetes_operator import PrestoKubernetesOperator
+from airflow.operators.bash_operator import BashOperator
+from airflow.operators.python_operator import PythonOperator
 from datetime import datetime, timedelta
+from airflow.hooks.presto_hook import PrestoHook
+
+
+
+def my_custom_function(ts,**kwargs):
+    """
+    This can be any python code you want and is called from the python operator. The code is not executed until
+    the task is run by the airflow scheduler.
+    """
+    print(f"I am task number {kwargs['task_number']}. This DAG Run execution date is {ts} and the current time is {datetime.now()}")
+    print(kwargs)
+    ph = PrestoHook(presto_conn_id='test')
+    hql = 'select * from system.runtime.nodes;'
+    records = ph.get_records(hql)
+    print(records)
 
 
 # Default settings applied to all tasks
@@ -17,34 +32,47 @@ default_args = {
 
 # Using a DAG context manager, you don't have to specify the dag property of each task
 with DAG('example_dag',
-         start_date=datetime(2020, 8, 1),
+         start_date=datetime(2019, 1, 1),
          max_active_runs=3,
-         schedule_interval=timedelta(days=1),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
+         schedule_interval=timedelta(minutes=30),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
          default_args=default_args,
-         catchup=False  # enable if you don't want historical dag runs to run
+         # catchup=False # enable if you don't want historical dag runs to run
          ) as dag:
 
     t0 = DummyOperator(
         task_id='start'
     )
-
-    presto_kubernetes_op = PrestoKubernetesOperator(
-        sql="SELECT '{{ds}}';",
-        output_path='s3://etlresults/test_table/{{ds}}.csv',
-        namespace='default',
-        image="<aws_account>.dkr.ecr.us-east-1.amazonaws.com/presto-airflow:latest",
-        labels={"project": "presto-airflow"},
-        name="presto-output-test",
-        task_id="presto-output-task",
-        get_logs=True,
-        dag=dag,
-        config_file=os.environ['AIRFLOW_HOME'] + '/.kube/config',
-        in_cluster=False,
-        execution_timeout=timedelta(hours=1),
+    t1 = PythonOperator(
+        task_id = 'test_presto',
+        python_callable=my_custom_function,
+        op_kwargs={'task_number': 2},
+        provide_context=True
     )
 
+    '''
     t1 = DummyOperator(
-        task_id='end'
+        task_id='group_bash_tasks'
     )
+    t2 = BashOperator(
+        task_id='bash_print_date1',
+        bash_command='sleep $[ ( $RANDOM % 30 )  + 1 ]s && date')
+    t3 = BashOperator(
+        task_id='bash_print_date2',
+        bash_command='sleep $[ ( $RANDOM % 30 )  + 1 ]s && date')
 
-    t0 >> presto_kubernetes_op >> t1
+    # generate tasks with a loop. task_id must be unique
+    for task in range(5):
+        tn = PythonOperator(
+            task_id=f'python_print_date_{task}',
+            python_callable=my_custom_function,  # make sure you don't include the () of the function
+            op_kwargs={'task_number': task},
+            provide_context=True
+        )
+
+
+        t0 >> tn # indented inside for loop so each task is added downstream of t0
+
+    t0 >> t1
+    t1 >> [t2, t3] # lists can be used to specify mutliple tasks
+    '''
+    t0 >> t1
