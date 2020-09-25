@@ -2,22 +2,10 @@ from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
+from airflow.operators.presto_ecs_operator import ECSOperator
 from datetime import datetime, timedelta
 from airflow.hooks.presto_hook import PrestoHook
 
-
-
-def my_custom_function(ts,**kwargs):
-    """
-    This can be any python code you want and is called from the python operator. The code is not executed until
-    the task is run by the airflow scheduler.
-    """
-    print(f"I am task number {kwargs['task_number']}. This DAG Run execution date is {ts} and the current time is {datetime.now()}")
-    print(kwargs)
-    ph = PrestoHook(presto_conn_id='test')
-    hql = 'select * from system.runtime.nodes;'
-    records = ph.get_records(hql)
-    print(records)
 
 
 # Default settings applied to all tasks
@@ -32,21 +20,49 @@ default_args = {
 
 # Using a DAG context manager, you don't have to specify the dag property of each task
 with DAG('example_dag',
-         start_date=datetime(2019, 1, 1),
+         start_date=datetime(2020, 9, 25),
          max_active_runs=3,
          schedule_interval=timedelta(minutes=30),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
          default_args=default_args,
-         # catchup=False # enable if you don't want historical dag runs to run
+         catchup=False # enable if you don't want historical dag runs to run
          ) as dag:
 
     t0 = DummyOperator(
         task_id='start'
     )
-    t1 = PythonOperator(
-        task_id = 'test_presto',
-        python_callable=my_custom_function,
-        op_kwargs={'task_number': 2},
-        provide_context=True
+    t1 = ECSOperator(
+        task_id='run_presto_query',
+        cluster='Soren-Presto-Cluster',
+        count=2,
+        group='family:airflow_ecs_operator',
+        launchType='FARGATE', #'EC2'|'FARGATE'
+        networkConfiguration={
+            'awsvpcConfiguration': {
+                'subnets': [
+                    'subnet-d02fbc89',
+                ],
+                # 'securityGroups': [
+                #     'string',
+                # ],
+                'assignPublicIp': 'ENABLED', #'ENABLED'|'DISABLED'
+            }
+        },
+        overrides={
+            'containerOverrides': [
+                {
+                    'name': 'Worker',
+                    'environment': [
+                        #{'name': 'COORDINATOR_HOST_PORT', 'value': '172.31.11.146'},
+                        {'name': 'MODE','value': 'WORKER'},
+                    ]
+                }
+            ]
+        },
+        referenceId=None,
+        startedBy='airflow',
+        taskDefinition='PrestoWorkers',
+        query='select * from system.runtime.nodes;'
+
     )
 
     '''

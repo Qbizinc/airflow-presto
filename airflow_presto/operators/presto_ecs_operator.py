@@ -206,7 +206,18 @@ class ECSOperator(BaseOperator):
         def execute(self, context):
             # create the coordinator register it as the airflow connection
             # assign self.conn_id and capture cooridinator's private ip
-            host = self.create_ecs_task(coordinator=True, count=1, overrides=self.overrides)
+            coordinator_overrides = {
+                'containerOverrides': [
+                    {
+                        'name': 'Worker',
+                        'environment': [
+                            {'name': 'COORDINATOR_HOST_PORT', 'value': 'localhost'},
+                            {'name': 'MODE', 'value': 'COORDINATOR'}
+                        ]
+                    }
+                ]
+            }
+            host = self.create_ecs_task(coordinator=True, count=1, overrides=coordinator_overrides)
             # create the workers
             self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
             # send that query
