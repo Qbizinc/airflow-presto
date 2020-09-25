@@ -66,7 +66,7 @@ class ECSOperator(BaseOperator):
         self.log.info(f"Query complete,  {len(records)} records retrieved")
         return records
 
-    def get_task_private_IP(self, task, cluster=self.cluster):
+    def get_task_private_IP(self, task, cluster):
         self.log.info(f"Retrieving private IP address for task {task} on cluster {cluster}")
         client = boto3.client('ecs')
         describe_response = client.describe_tasks(cluster=cluster, tasks=[task])
@@ -81,7 +81,7 @@ class ECSOperator(BaseOperator):
         )
 
 
-    def stop_ecs_task(self, cluster=self.cluster, group=self.group):
+    def stop_ecs_task(self, cluster, group):
         # TODO: first query the groups then take it all down
         self.log.info(f"Retrieving tasks associated with {group} in {cluster}")
         client = boto3.client('ecs')
@@ -99,7 +99,7 @@ class ECSOperator(BaseOperator):
         self.log.info('Tasks succesfully spun down')
         return None
 
-    def create_ecs_task(self, coordinator: bool, count=self.count, overrides=self.overrides):
+    def create_ecs_task(self, coordinator: bool, count, overrides):
         client = boto3.client('ecs')
         response = client.run_task(
             # capacityProviderStrategy=[
@@ -219,6 +219,10 @@ class ECSOperator(BaseOperator):
             }
             host = self.create_ecs_task(coordinator=True, count=1, overrides=coordinator_overrides)
             # create the workers
+            # TODO: sloppy as hell
+            self.overrides['containerOverrides'][0]['environment'].append(
+                {'name': 'COORDINATOR_HOST_PORT', 'value': host}
+            )
             self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
             # send that query
             results = self.query_presto(self.query, self.conn_id)
