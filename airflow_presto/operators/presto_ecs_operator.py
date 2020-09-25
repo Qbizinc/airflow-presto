@@ -23,8 +23,10 @@ class ECSOperator(BaseOperator):
             startedBy: str,
             taskDefinition: str,
             query: str,
+            task_id: str,
+            dag,
             *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+        # super(ECSOperator, self).__init__(*args, **kwargs)
         self.cluster = cluster
         self.count = count
         self.group = group
@@ -35,11 +37,13 @@ class ECSOperator(BaseOperator):
         self.startedBy = startedBy
         self.taskDefinition = taskDefinition
         self.query = query
+        self.task_id = task_id
+        self.dag = dag
         if not self.group.startswith('family:'):
             raise Exception("Group must begin with 'family:' for task managing")
 
-    def create_single_node_task(self):
-        raise NotImplementedError
+    # def create_single_node_task(self):
+    #     raise NotImplementedError
 
     def register_connection(self, conn_id, conn_type, host, login, password, port):
         conn = Connection(
@@ -56,8 +60,8 @@ class ECSOperator(BaseOperator):
         self.log.info(f"connection type {conn_type} registered for host {host} named {conn_id}")
         self.conn_id = conn_id
 
-    def unregister_connection(self, conn_id):
-        raise NotImplementedError
+    # def unregister_connection(self, conn_id):
+    #     raise NotImplementedError
 
     def query_presto(self, query, conn_id):
         self.log.info(f"Querying {conn_id}")
