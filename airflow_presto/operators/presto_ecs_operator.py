@@ -1,6 +1,7 @@
 from airflow.hooks.presto_hook import PrestoHook
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
+from airflow.exceptions import AirflowException
 from airflow import settings
 from airflow.models import Connection
 import boto3
@@ -23,10 +24,8 @@ class ECSOperator(BaseOperator):
             startedBy: str,
             taskDefinition: str,
             query: str,
-            task_id: str,
-            dag,
             *args, **kwargs) -> None:
-        # super(ECSOperator, self).__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
         self.cluster = cluster
         self.count = count
         self.group = group
@@ -37,8 +36,6 @@ class ECSOperator(BaseOperator):
         self.startedBy = startedBy
         self.taskDefinition = taskDefinition
         self.query = query
-        self.task_id = task_id
-        self.dag = dag
         if not self.group.startswith('family:'):
             raise Exception("Group must begin with 'family:' for task managing")
 

@@ -2,7 +2,8 @@ from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.presto_ecs_operator import ECSOperator
+from operators.presto_ecs_operator import ECSOperator
+
 from datetime import datetime, timedelta
 from airflow.hooks.presto_hook import PrestoHook
 
