@@ -204,29 +204,29 @@ class ECSOperator(BaseOperator):
             return self.coordinator_host
         return None
 
-        def execute(self, context):
-            # create the coordinator register it as the airflow connection
-            # assign self.conn_id and capture cooridinator's private ip
-            coordinator_overrides = {
-                'containerOverrides': [
-                    {
-                        'name': 'Worker',
-                        'environment': [
-                            {'name': 'COORDINATOR_HOST_PORT', 'value': 'localhost'},
-                            {'name': 'MODE', 'value': 'COORDINATOR'}
-                        ]
-                    }
-                ]
-            }
-            host = self.create_ecs_task(coordinator=True, count=1, overrides=coordinator_overrides)
-            # create the workers
-            # TODO: sloppy as hell
-            self.overrides['containerOverrides'][0]['environment'].append(
-                {'name': 'COORDINATOR_HOST_PORT', 'value': host}
-            )
-            self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
-            # send that query
-            results = self.query_presto(self.query, self.conn_id)
-            # Stop all containers
-            self.stop_ecs_task(cluster=self.cluster, group=self.group)
-            return results
+    def execute(self, context):
+        # create the coordinator register it as the airflow connection
+        # assign self.conn_id and capture cooridinator's private ip
+        coordinator_overrides = {
+            'containerOverrides': [
+                {
+                    'name': 'Worker',
+                    'environment': [
+                        {'name': 'COORDINATOR_HOST_PORT', 'value': 'localhost'},
+                        {'name': 'MODE', 'value': 'COORDINATOR'}
+                    ]
+                }
+            ]
+        }
+        host = self.create_ecs_task(coordinator=True, count=1, overrides=coordinator_overrides)
+        # create the workers
+        # TODO: sloppy as hell
+        self.overrides['containerOverrides'][0]['environment'].append(
+            {'name': 'COORDINATOR_HOST_PORT', 'value': host}
+        )
+        self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
+        # send that query
+        results = self.query_presto(self.query, self.conn_id)
+        # Stop all containers
+        self.stop_ecs_task(cluster=self.cluster, group=self.group)
+        return results
