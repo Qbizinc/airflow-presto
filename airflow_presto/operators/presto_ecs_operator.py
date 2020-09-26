@@ -14,6 +14,7 @@ class ECSOperator(BaseOperator):
     @apply_defaults
     def __init__(
             self,
+            region_name: str,
             cluster: str,
             count: int,
             group: str,  #Group must begin with "family:"
@@ -26,6 +27,8 @@ class ECSOperator(BaseOperator):
             query: str,
             *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.region_name = region_name
+        self.client = boto3.client('ecs', region_name=self.region_name)
         self.cluster = cluster
         self.count = count
         self.group = group
@@ -69,8 +72,7 @@ class ECSOperator(BaseOperator):
 
     def get_task_private_IP(self, task, cluster):
         self.log.info(f"Retrieving private IP address for task {task} on cluster {cluster}")
-        client = boto3.client('ecs')
-        describe_response = client.describe_tasks(cluster=cluster, tasks=[task])
+        describe_response = self.client.describe_tasks(cluster=cluster, tasks=[task])
         # Assuming only the one task,  this grabs the Private IP of the task
         for detail in describe_response['tasks'][0]['attachments'][0]['details']:
             if detail['name'] == 'privateIPv4Address':
@@ -85,24 +87,22 @@ class ECSOperator(BaseOperator):
     def stop_ecs_task(self, cluster, group):
         # TODO: first query the groups then take it all down
         self.log.info(f"Retrieving tasks associated with {group} in {cluster}")
-        client = boto3.client('ecs')
-        tasks= client.list_tasks(cluster=cluster, family=group.replace('family:',''))['taskArns']
+        tasks= self.client.list_tasks(cluster=cluster, family=group.replace('family:',''))['taskArns']
         self.log.info(f"Tasks marked for stopping: {tasks}")
         for task in tasks:
             self.log.info(f"Stopping task: {task}")
-            response = client.stop_task(
+            response = self.client.stop_task(
                 cluster=cluster,
                 task=task,
                 reason="Query Complete"
             )
-        waiter = client.get_waiter('tasks_stopped')
+        waiter = self.client.get_waiter('tasks_stopped')
         waiter.wait(tasks)
         self.log.info('Tasks succesfully spun down')
         return None
 
     def create_ecs_task(self, coordinator: bool, count, overrides):
-        client = boto3.client('ecs')
-        response = client.run_task(
+        response = self.client.run_task(
             # capacityProviderStrategy=[
             #     {
             #         'capacityProvider': 'FARGATE',
@@ -186,7 +186,7 @@ class ECSOperator(BaseOperator):
         self.log.debug(response)
         task_arns = [task['taskArn'] for task in response['tasks']]
         self.log.info(f"Creating tasks: {task_arns}")
-        waiter = client.get_waiter('task_running')
+        waiter = self.client.get_waiter('task_running')
         self.log.info("waiting for tasks to reach running state")
         waiter.wait(cluster=self.cluster, tasks=task_arns)
         self.log.info(f"tasks created: {task_arns}")

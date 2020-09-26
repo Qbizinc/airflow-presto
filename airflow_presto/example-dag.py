@@ -32,6 +32,7 @@ with DAG('example_dag',
         task_id='start'
     )
     t1 = ECSOperator(
+        region_name='us-west-2',
         task_id='run_presto_query',
         cluster='Soren-Presto-Cluster',
         count=2,
