@@ -25,7 +25,7 @@ class ECSOperator(BaseOperator):
             taskDefinition: str,
             query: str,
             *args, **kwargs) -> None:
-        # super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.cluster = cluster
         self.count = count
         self.group = group

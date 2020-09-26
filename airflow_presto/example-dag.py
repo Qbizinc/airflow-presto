@@ -33,7 +33,6 @@ with DAG('example_dag',
     )
     t1 = ECSOperator(
         task_id='run_presto_query',
-        dag=dag,
         cluster='Soren-Presto-Cluster',
         count=2,
         group='family:airflow_ecs_operator',
