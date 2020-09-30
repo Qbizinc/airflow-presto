@@ -15,9 +15,11 @@ class ECSOperator(BaseOperator):
     def __init__(
             self,
             region_name: str,
+            aws_access_key_id: str,
+            aws_secret_access_key: str,
             cluster: str,
             count: int,
-            group: str,  #Group must begin with "family:"
+            group: str,
             launchType: str,
             networkConfiguration: dict,
             overrides: dict,
@@ -28,7 +30,13 @@ class ECSOperator(BaseOperator):
             *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.region_name = region_name
-        self.client = boto3.client('ecs', region_name=self.region_name)
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.client = boto3.client(
+            'ecs',
+            region_name=self.region_name,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key)
         self.cluster = cluster
         self.count = count
         self.group = group
@@ -39,8 +47,6 @@ class ECSOperator(BaseOperator):
         self.startedBy = startedBy
         self.taskDefinition = taskDefinition
         self.query = query
-        if not self.group.startswith('family:'):
-            raise Exception("Group must begin with 'family:' for task managing")
 
     # def create_single_node_task(self):
     #     raise NotImplementedError
@@ -58,10 +64,13 @@ class ECSOperator(BaseOperator):
         session.add(conn)
         session.commit() # it will insert the connection object programmatically.
         self.log.info(f"connection type {conn_type} registered for host {host} named {conn_id}")
-        self.conn_id = conn_id
+        self.connection = conn
 
-    # def unregister_connection(self, conn_id):
-    #     raise NotImplementedError
+    def unregister_connection(self, connection):
+        self.log.info(f"removing connection: {connection}")
+        session = settings.Session()
+        session.delete(connection)
+        session.commit()
 
     def query_presto(self, query, conn_id):
         self.log.info(f"Querying {conn_id}")
@@ -70,24 +79,38 @@ class ECSOperator(BaseOperator):
         self.log.info(f"Query complete,  {len(records)} records retrieved")
         return records
 
-    def get_task_private_IP(self, task, cluster):
-        self.log.info(f"Retrieving private IP address for task {task} on cluster {cluster}")
+    def get_task_ip_address(self, task, cluster, public=False):
+        self.log.info(
+            f"Retrieving IP address for task {task} on cluster {cluster}. public is {public}"
+        )
         describe_response = self.client.describe_tasks(cluster=cluster, tasks=[task])
         # Assuming only the one task,  this grabs the Private IP of the task
         for detail in describe_response['tasks'][0]['attachments'][0]['details']:
-            if detail['name'] == 'privateIPv4Address':
+            if public == False and detail['name'] == 'privateIPv4Address':
                 ip_address = detail['value']
-                self.log.info(f"task {task} is ataddress {ip_address}")
+                self.log.info(f"task {task} is at private address {ip_address}")
+                return ip_address
+            if public == True and detail['name'] == 'networkInterfaceId':
+                ec2_client = boto3.client(
+                    'ec2',
+                    region_name=self.region_name,
+                    aws_access_key_id=self.aws_access_key_id,
+                    aws_secret_access_key=self.aws_secret_access_key
+                )
+                ec2_response = ec2_client.describe_network_interfaces(
+                    NetworkInterfaceIds=[detail['value']]
+                )
+                ip_address = ec2_response['NetworkInterfaces'][0]['Association']['PublicIp']
+                self.log.info(f"task {task} is at public address {ip_address}")
                 return ip_address
         self.log.error(
             f"IP discovery did not execute correctly, client response: {describe_response}"
         )
 
-
     def stop_ecs_task(self, cluster, group):
         # TODO: first query the groups then take it all down
-        self.log.info(f"Retrieving tasks associated with {group} in {cluster}")
-        tasks= self.client.list_tasks(cluster=cluster, family=group.replace('family:',''))['taskArns']
+        self.log.info(f"Retrieving tasks associated with {self.startedBy} in {cluster}")
+        tasks= self.client.list_tasks(cluster=cluster, startedBy=self.startedBy)['taskArns']
         self.log.info(f"Tasks marked for stopping: {tasks}")
         for task in tasks:
             self.log.info(f"Stopping task: {task}")
@@ -97,7 +120,7 @@ class ECSOperator(BaseOperator):
                 reason="Query Complete"
             )
         waiter = self.client.get_waiter('tasks_stopped')
-        waiter.wait(tasks)
+        waiter.wait(cluster=self.cluster, tasks=tasks)
         self.log.info('Tasks succesfully spun down')
         return None
 
@@ -111,12 +134,12 @@ class ECSOperator(BaseOperator):
             #     },
             # ],
             cluster=self.cluster,
-            count=self.count,
-            enableECSManagedTags=True, #True|False,
+            count=count,
+            # enableECSManagedTags=True, #True|False,
             group=self.group,
             launchType=self.launchType, #'EC2'|'FARGATE',
             networkConfiguration=self.networkConfiguration,
-            overrides=self.overrides,
+            overrides=overrides,
             # overrides={
             #     'containerOverrides': [
             #         {
@@ -171,8 +194,8 @@ class ECSOperator(BaseOperator):
             #     },
             # ],
             # platformVersion='string',
-            propagateTags='TASK_DEFINITION', #'TASK_DEFINITION'|'SERVICE',
-            referenceId=self.referenceId,
+            # propagateTags='TASK_DEFINITION', #'TASK_DEFINITION'|'SERVICE',
+            # referenceId=self.referenceId,
             startedBy=self.startedBy,
             # tags=[
             #     {
@@ -186,13 +209,17 @@ class ECSOperator(BaseOperator):
         self.log.debug(response)
         task_arns = [task['taskArn'] for task in response['tasks']]
         self.log.info(f"Creating tasks: {task_arns}")
-        waiter = self.client.get_waiter('task_running')
+        waiter = self.client.get_waiter('tasks_running')
         self.log.info("waiting for tasks to reach running state")
         waiter.wait(cluster=self.cluster, tasks=task_arns)
         self.log.info(f"tasks created: {task_arns}")
         if coordinator == True:
             self.log.info('Registering coordinator ip to airflow connections')
-            self.coordinator_host = self.get_task_private_IP(task_arns[0], cluster=self.cluster)
+            self.coordinator_host = self.get_task_ip_address(
+                task_arns[0],
+                cluster=self.cluster,
+                public=True
+            )
             self.register_connection(
                 task_arns[0],
                 'presto',
@@ -201,7 +228,8 @@ class ECSOperator(BaseOperator):
                 None,
                 8080
             )
-            return self.coordinator_host
+            # Return the private IP, so the workers can connect to the private IP
+            return self.get_task_ip_address(task_arns[0], cluster=self.cluster, public=False)
         return None
 
     def execute(self, context):
@@ -218,15 +246,21 @@ class ECSOperator(BaseOperator):
                 }
             ]
         }
-        host = self.create_ecs_task(coordinator=True, count=1, overrides=coordinator_overrides)
+        host_private_ip = self.create_ecs_task(
+            coordinator=True,
+            count=1,
+            overrides=coordinator_overrides
+        )
         # create the workers
         # TODO: sloppy as hell
         self.overrides['containerOverrides'][0]['environment'].append(
-            {'name': 'COORDINATOR_HOST_PORT', 'value': host}
+            {'name': 'COORDINATOR_HOST_PORT', 'value': host_private_ip}
         )
         self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
         # send that query
         results = self.query_presto(self.query, self.conn_id)
         # Stop all containers
         self.stop_ecs_task(cluster=self.cluster, group=self.group)
+        self.unregister_connection(self.connection)
+        print(results)
         return results

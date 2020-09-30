@@ -6,7 +6,10 @@ from operators.presto_ecs_operator import ECSOperator
 
 from datetime import datetime, timedelta
 from airflow.hooks.presto_hook import PrestoHook
+import json, uuid
 
+with open('credentials.json', 'r') as f:
+    credentials = json.load(f)
 
 
 # Default settings applied to all tasks
@@ -22,8 +25,8 @@ default_args = {
 # Using a DAG context manager, you don't have to specify the dag property of each task
 with DAG('example_dag',
          start_date=datetime(2020, 9, 25),
-         max_active_runs=3,
-         schedule_interval=timedelta(minutes=30),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
+         max_active_runs=1,
+         schedule_interval=timedelta(days=1),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
          default_args=default_args,
          catchup=False # enable if you don't want historical dag runs to run
          ) as dag:
@@ -33,6 +36,8 @@ with DAG('example_dag',
     )
     t1 = ECSOperator(
         region_name='us-west-2',
+        aws_access_key_id=credentials['aws_access_key_id'],
+        aws_secret_access_key=credentials['aws_secret_access_key'],
         task_id='run_presto_query',
         cluster='Soren-Presto-Cluster',
         count=2,
@@ -43,9 +48,9 @@ with DAG('example_dag',
                 'subnets': [
                     'subnet-d02fbc89',
                 ],
-                # 'securityGroups': [
-                #     'string',
-                # ],
+                'securityGroups': [
+                    'sg-07f31eb2e5e9b49ea',
+                ],
                 'assignPublicIp': 'ENABLED', #'ENABLED'|'DISABLED'
             }
         },
@@ -61,9 +66,9 @@ with DAG('example_dag',
             ]
         },
         referenceId=None,
-        startedBy='airflow',
+        startedBy='airflow-' + str(uuid.uuid4()),
         taskDefinition='PrestoWorkers',
-        query='select * from system.runtime.nodes;'
+        query='select * from default.ny_pub LIMIT 100;'
 
     )
 
