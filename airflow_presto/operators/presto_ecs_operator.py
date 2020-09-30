@@ -64,6 +64,7 @@ class ECSOperator(BaseOperator):
         session.add(conn)
         session.commit() # it will insert the connection object programmatically.
         self.log.info(f"connection type {conn_type} registered for host {host} named {conn_id}")
+        # Save connection info for deletion
         self.connection = conn
         self.conn_id = conn_id
 
@@ -136,74 +137,11 @@ class ECSOperator(BaseOperator):
             # ],
             cluster=self.cluster,
             count=count,
-            # enableECSManagedTags=True, #True|False,
             group=self.group,
             launchType=self.launchType, #'EC2'|'FARGATE',
             networkConfiguration=self.networkConfiguration,
             overrides=overrides,
-            # overrides={
-            #     'containerOverrides': [
-            #         {
-            #             'name': 'string',
-            #             'command': [
-            #                 'string',
-            #             ],
-            #             'environment': [
-            #                 {
-            #                     'name': 'string',
-            #                     'value': 'string'
-            #                 },
-            #             ],
-            #             'environmentFiles': [
-            #                 {
-            #                     'value': 'string',
-            #                     'type': 's3'
-            #                 },
-            #             ],
-            #             'cpu': 123,
-            #             'memory': 123,
-            #             'memoryReservation': 123,
-            #             'resourceRequirements': [
-            #                 {
-            #                     'value': 'string',
-            #                     'type': 'GPU'|'InferenceAccelerator'
-            #                 },
-            #             ]
-            #         },
-            #     ],
-            #     'cpu': 'string',
-            #     'inferenceAcceleratorOverrides': [
-            #         {
-            #             'deviceName': 'string',
-            #             'deviceType': 'string'
-            #         },
-            #     ],
-            #     'executionRoleArn': 'string',
-            #     'memory': 'string',
-            #     'taskRoleArn': 'string'
-            # },
-            # placementConstraints=[
-            #     {
-            #         'type': 'distinctInstance'|'memberOf',
-            #         'expression': 'string'
-            #     },
-            # ],
-            # placementStrategy=[
-            #     {
-            #         'type': 'random'|'spread'|'binpack',
-            #         'field': 'string'
-            #     },
-            # ],
-            # platformVersion='string',
-            # propagateTags='TASK_DEFINITION', #'TASK_DEFINITION'|'SERVICE',
-            # referenceId=self.referenceId,
             startedBy=self.startedBy,
-            # tags=[
-            #     {
-            #         'key': 'string',
-            #         'value': 'string'
-            #     },
-            # ],
             taskDefinition=self.taskDefinition
         )
 
@@ -235,7 +173,7 @@ class ECSOperator(BaseOperator):
 
     def execute(self, context):
         # create the coordinator register it as the airflow connection
-        # assign self.conn_id and capture cooridinator's private ip
+        # assign self.conn_id and capture cooridinator's public and private ips
         coordinator_overrides = {
             'containerOverrides': [
                 {
@@ -253,14 +191,13 @@ class ECSOperator(BaseOperator):
             overrides=coordinator_overrides
         )
         # create the workers
-        # TODO: sloppy as hell
         self.overrides['containerOverrides'][0]['environment'].append(
             {'name': 'COORDINATOR_HOST_PORT', 'value': host_private_ip}
         )
         self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
         # send that query
         results = self.query_presto(self.query, self.conn_id)
-        # Stop all containers
+        # Stop all containers and remove airflow connection
         self.stop_ecs_task(cluster=self.cluster, group=self.group)
         self.unregister_connection(self.connection)
         print(results)
