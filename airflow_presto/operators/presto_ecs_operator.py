@@ -65,6 +65,7 @@ class ECSOperator(BaseOperator):
         session.commit() # it will insert the connection object programmatically.
         self.log.info(f"connection type {conn_type} registered for host {host} named {conn_id}")
         self.connection = conn
+        self.conn_id = conn_id
 
     def unregister_connection(self, connection):
         self.log.info(f"removing connection: {connection}")
