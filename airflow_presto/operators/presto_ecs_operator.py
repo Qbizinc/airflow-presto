@@ -109,10 +109,10 @@ class ECSOperator(BaseOperator):
             f"IP discovery did not execute correctly, client response: {describe_response}"
         )
 
-    def stop_ecs_task(self, cluster, group):
+    def stop_ecs_task(self, cluster, startedBy):
         # TODO: first query the groups then take it all down
         self.log.info(f"Retrieving tasks associated with {self.startedBy} in {cluster}")
-        tasks= self.client.list_tasks(cluster=cluster, startedBy=self.startedBy)['taskArns']
+        tasks= self.client.list_tasks(cluster=cluster, startedBy=startedBy)['taskArns']
         self.log.info(f"Tasks marked for stopping: {tasks}")
         for task in tasks:
             self.log.info(f"Stopping task: {task}")
@@ -174,31 +174,39 @@ class ECSOperator(BaseOperator):
     def execute(self, context):
         # create the coordinator register it as the airflow connection
         # assign self.conn_id and capture cooridinator's public and private ips
-        coordinator_overrides = {
-            'containerOverrides': [
-                {
-                    'name': 'Worker',
-                    'environment': [
-                        {'name': 'COORDINATOR_HOST_PORT', 'value': 'localhost'},
-                        {'name': 'MODE', 'value': 'COORDINATOR'}
-                    ]
-                }
-            ]
-        }
-        host_private_ip = self.create_ecs_task(
-            coordinator=True,
-            count=1,
-            overrides=coordinator_overrides
-        )
-        # create the workers
-        self.overrides['containerOverrides'][0]['environment'].append(
-            {'name': 'COORDINATOR_HOST_PORT', 'value': host_private_ip}
-        )
-        self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
-        # send that query
-        results = self.query_presto(self.query, self.conn_id)
-        # Stop all containers and remove airflow connection
-        self.stop_ecs_task(cluster=self.cluster, group=self.group)
-        self.unregister_connection(self.connection)
-        print(results)
-        return results
+        try:
+            coordinator_overrides = {
+                'containerOverrides': [
+                    {
+                        'name': 'Worker',
+                        'environment': [
+                            {'name': 'COORDINATOR_HOST_PORT', 'value': 'localhost'},
+                            {'name': 'MODE', 'value': 'COORDINATOR'}
+                        ]
+                    }
+                ]
+            }
+            host_private_ip = self.create_ecs_task(
+                coordinator=True,
+                count=1,
+                overrides=coordinator_overrides
+            )
+            # create the workers
+            self.overrides['containerOverrides'][0]['environment'].append(
+                {'name': 'COORDINATOR_HOST_PORT', 'value': host_private_ip}
+            )
+            self.create_ecs_task(coordinator=False, count=self.count, overrides=self.overrides)
+            # send that query
+            results = self.query_presto(self.query, self.conn_id)
+            # Stop all containers and remove airflow connection
+            self.stop_ecs_task(cluster=self.cluster, startedBy=self.startedBy)
+            self.unregister_connection(self.connection)
+            print(results)
+            return results
+        except Exception as e:
+            self.log.critical('ECSOperator failed execution')
+            self.log.critical(f"Attempting to stop resources started by {self.startedBy}")
+            self.stop_ecs_task(cluster=self.cluster, startedBy=self.startedBy)
+            self.unregister_connection(self.connection)
+            self.log.error(e)
+            raise e
