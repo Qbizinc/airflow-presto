@@ -7,7 +7,7 @@ RUN \
     set -xeu && \
     yum -y -q update && \
     yum -y -q install epel-release && \
-    yum -y -q install java-11-openjdk-devel less wget curl unzip python-pip && \
+    yum -y -q install java-11-openjdk-devel less wget curl unzip python-pip openssh-server && \
     yum -q clean all && \
     rm -rf /var/cache/yum && \
     rm -rf /tmp/* /var/tmp/* && \
@@ -26,6 +26,9 @@ COPY bin/ /usr/lib/presto/bin/
 COPY default/ /usr/lib/presto/default
 RUN chown -R presto:presto /usr/lib/presto
 RUN ls -la /usr/bin/presto
+RUN ln -s /usr/lib/presto/default/etc/catalog /usr/lib/presto/default/etc/coordinator/catalog
+RUN ln -s /usr/lib/presto/default/etc/catalog /usr/lib/presto/default/etc/worker/catalog
+
 
 RUN pip install --upgrade pip && \
     pip install awscli

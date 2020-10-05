@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# Setup CLI defaults.  I have two profiles -- one for work account and another
+# for my personal account.  I set the default profile for this script to use
+# work profile.
+
+export AWS_DEFAULT_REGION="us-west-2"
+export AWS_PROFILE="qbiz"
+
+BASE_NAME="qbiz"
+IMAGE="907770664110.dkr.ecr.us-west-2.amazonaws.com/presto-airflow:batch"
+JOB_ROLE="arn:aws:iam::907770664110:role/sorenServiceRoleECS" # Service for ecs-task, supports S3 and Glue
+SERVICE_ROLE="arn:aws:iam::907770664110:role/batchServiceRole" # Service for Batch, supports S3 and Glue.
+INSTANCE_ROLE="arn:aws:iam::907770664110:instance-profile/ecsInstanceRole"  # Service for EC2, supports s3 but not glue.
+ALTERNATE_INSTANCE_ROLE="arn:aws:iam::907770664110:instance-profile/EC2-ECR"
+ECS_TASK_EXC_ROLE="arn:aws:iam::907770664110:role/ecsTaskExecutionRole"
+COMMAND='["/bin/bash","/usr/lib/presto/bin/run-presto-batch.bash"]'
+VPC_ID=vpc-03c49166
+SUBNET=subnet-d02fbc89
+SECURITY_GROUP=sg-07f31eb2e5e9b49ea
+
+LOG_CONFIG="{\"logDriver\": \"awslogs\",
+             \"options\": {
+               \"awslogs-group\": \"/batch/Presto\",
+               \"awslogs-region\": \"us-west-2\",
+               \"awslogs-stream-prefix\": \" batch\"
+              }
+             }"
+
+aws batch register-job-definition \
+  --job-definition-name $BASE_NAME-task-definition \
+  --type multinode \
+  --timeout attemptDurationSeconds=600 \
+  --node-properties  "{\"numNodes\": 3,
+                      \"mainNode\": 0,
+                      \"nodeRangeProperties\": [
+                        {\"targetNodes\": \"0\",
+                         \"container\": {
+                            \"image\": \"$IMAGE\",
+                            \"vcpus\": 1,
+                            \"memory\": 4096,
+                            \"command\": $COMMAND,
+                            \"networks":[{"NetworkMode":"host"
+                            \"jobRoleArn\": \"$JOB_ROLE\",
+                            \"executionRoleArn\": \"$ECS_TASK_EXC_ROLE\",
+                            \"logConfiguration\": $LOG_CONFIG
+                          }
+                        },
+                        {\"targetNodes\": \"1:2\",
+                         \"container\": {
+                            \"image\": \"$IMAGE\",
+                            \"vcpus\": 1,
+                            \"memory\": 4096,
+                            \"command\": $COMMAND,
+                            \"jobRoleArn\": \"$JOB_ROLE\",
+                            \"executionRoleArn\": \"$ECS_TASK_EXC_ROLE\",
+                            \"logConfiguration\": $LOG_CONFIG
+                          }
+                        }
+                      ]
+                    }"
+
+aws batch create-compute-environment \
+    --compute-environment-name $BASE_NAME-compute-environment \
+    --type MANAGED \
+    --service-role $SERVICE_ROLE \
+    --compute-resources "{\"type\": \"EC2\",
+                          \"minvCpus\": 0,
+                          \"maxvCpus\": 128,
+                          \"desiredvCpus\": 0,
+                          \"instanceTypes\": [\"m5\"],
+                          \"subnets\": [\"$SUBNET\"],
+                          \"securityGroupIds\": [\"$SECURITY_GROUP\"],
+                          \"instanceRole\": \"$ALTERNATE_INSTANCE_ROLE\",
+                          \"imageId\": \"ami-05edb14e89a5b98f3\",
+                          \"ec2KeyPair\": \"Qbizserver2\"
+                        }" | jq '.computeEnvironmentArn'
+# \"imageId\": \"ami-0b863f0eaa18d9510\", ami-0e735c9fbcca3efed
+
+    # --compute-resources is not required for unmanaged compute types.
+COMPUTE_ARN=arn:aws:batch:us-west-2:907770664110:compute-environment/qbiz-compute-environment
+
+aws batch create-job-queue \
+  --job-queue-name "$BASE_NAME-job-queue" \
+  --priority 99 \
+  --compute-environment-order "[{\"order\":0,\"computeEnvironment\": \"$COMPUTE_ARN\"}]"
+
+aws batch submit-job \
+  --job-name $BASE_NAME-test-job \
+  --job-queue "$BASE_NAME-job-queue" \
+  --job-definition $BASE_NAME-task-definition \
+  --container-overrides '{"environment": [{"name":"QUERY","value":"SELECT COUNT(*) FROM test_table;"}]}'
+
+aws batch describe-job-definitions \
+  --job-definition-name $BASE_NAME-task-definition
+
+aws batch describe-job-definitions \
+  --job-definition-name soren
+
+aws batch describe-jobs \
+  --jobs "db6d79e5-bb90-4bce-8f88-6f1221018b21" "f2f96a96-6672-4abe-9937-8844020bb8fb"
