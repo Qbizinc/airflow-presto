@@ -111,8 +111,8 @@ class ECSOperator(BaseOperator):
 
     def stop_ecs_task(self, cluster, startedBy):
         # TODO: first query the groups then take it all down
-        self.log.info(f"Retrieving tasks associated with {self.startedBy} in {cluster}")
-        tasks= self.client.list_tasks(cluster=cluster, startedBy=startedBy)['taskArns']
+        self.log.info(f"Retrieving tasks associated with {startedBy} in {cluster}")
+        tasks = self.client.list_tasks(cluster=cluster, startedBy=startedBy)['taskArns']
         self.log.info(f"Tasks marked for stopping: {tasks}")
         for task in tasks:
             self.log.info(f"Stopping task: {task}")
@@ -122,7 +122,7 @@ class ECSOperator(BaseOperator):
                 reason="Query Complete"
             )
         waiter = self.client.get_waiter('tasks_stopped')
-        waiter.wait(cluster=self.cluster, tasks=tasks)
+        waiter.wait(cluster=cluster, tasks=tasks)
         self.log.info('Tasks succesfully spun down')
         return None
 
@@ -204,9 +204,15 @@ class ECSOperator(BaseOperator):
             print(results)
             return results
         except Exception as e:
-            self.log.critical('ECSOperator failed execution')
-            self.log.critical(f"Attempting to stop resources started by {self.startedBy}")
-            self.stop_ecs_task(cluster=self.cluster, startedBy=self.startedBy)
-            self.unregister_connection(self.connection)
-            self.log.error(e)
-            raise e
+            try:
+                self.log.error(e)
+                self.log.warning('ECSOperator failed execution')
+                self.log.warning(f"Attempting to stop resources started by {self.startedBy}")
+                self.stop_ecs_task(cluster=self.cluster, startedBy=self.startedBy)
+                self.unregister_connection(self.connection)
+                raise e
+            except Exception as e2:
+                self.log.critical('*** ECSOperator failed to spin down resources ***')
+                self.log.critical(f"Check ECS cluster {self.cluster} for idle tasks")
+                self.log.critical(f"Tasks started by {self.startedBy}")
+                raise e2

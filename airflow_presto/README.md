@@ -52,4 +52,4 @@ This airflow operator manages the compute resources for you presto cluster,  as 
   By default,  the airflow task will run whatever is in the `execute` function of the operator.  You can customize how the airflow operator works by adjusting any of the steps in the `execute` function.
 
 #### Debugging
-  By default, if the operator does not successfully execute,  or get to the "spin down resources" phase,  you will need to manually stop the running presto cluster tasks.  In your ECS cluster,  Identify the running tasks by group,  startedBy, or any other identifiable information,  and stop the tasks manually  
+  By default, if the operator does not successfully execute,  or get to the "spin down resources" phase, the operator will attempt to spin down aws resources and unregister the connection.  If this step fails, you will need to manually stop the running presto cluster tasks.  In your ECS cluster,  Identify the running tasks by group,  startedBy, or any other identifiable information,  and stop the tasks manually  
