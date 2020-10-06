@@ -24,7 +24,7 @@ default_args = {
 
 # Using a DAG context manager, you don't have to specify the dag property of each task
 with DAG('example_dag',
-         start_date=datetime(2020, 9, 25),
+         start_date=datetime(2020, 10, 6),
          max_active_runs=1,
          schedule_interval=timedelta(days=1),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
          default_args=default_args,

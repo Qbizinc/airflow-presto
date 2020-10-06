@@ -203,7 +203,9 @@ class ECSOperator(BaseOperator):
             self.unregister_connection(self.connection)
             print(results)
             return results
+
         except Exception as e:
+            # Something bad happened.  Attempt to spin down any created resources
             try:
                 self.log.error(e)
                 self.log.warning('ECSOperator failed execution')
@@ -211,7 +213,10 @@ class ECSOperator(BaseOperator):
                 self.stop_ecs_task(cluster=self.cluster, startedBy=self.startedBy)
                 self.unregister_connection(self.connection)
                 raise e
+
             except Exception as e2:
+                # Spinning down resources failed.  Resources are still standing
+                # Scream at the user about it
                 self.log.critical('*** ECSOperator failed to spin down resources ***')
                 self.log.critical(f"Check ECS cluster {self.cluster} for idle tasks")
                 self.log.critical(f"Tasks started by {self.startedBy}")
