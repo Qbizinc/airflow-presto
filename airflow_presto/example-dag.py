@@ -47,7 +47,7 @@ with DAG('example_dag',
         overrides=settings["overrides"],
         referenceId=settings["referenceId"],
         # This ID is how we know what to spin down when we are finished
-        startedBy='airflow-' + str(uuid.uuid4()),
+        startedBy='airflow-' + str(uuid.uuid4() ,
         taskDefinition=settings["taskDefinition"],
         query='select * from default.ny_pub LIMIT 10;'
     )
