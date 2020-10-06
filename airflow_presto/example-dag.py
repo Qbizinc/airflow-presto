@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 from airflow.hooks.presto_hook import PrestoHook
 import json, uuid
 
-with open('credentials.json', 'r') as f:
-    credentials = json.load(f)
+with open('settings.json', 'r') as f:
+    settings = json.load(f)
 
 
 # Default settings applied to all tasks
@@ -35,41 +35,20 @@ with DAG('example_dag',
         task_id='start'
     )
     t1 = ECSOperator(
-        region_name='us-west-2',
-        aws_access_key_id=credentials['aws_access_key_id'],
-        aws_secret_access_key=credentials['aws_secret_access_key'],
-        task_id='run_presto_query',
-        cluster='Soren-Presto-Cluster',
-        count=2,
-        group='airflow_ecs_operator',
-        launchType='FARGATE', #'EC2'|'FARGATE'
-        networkConfiguration={
-            'awsvpcConfiguration': {
-                'subnets': [
-                    'subnet-d02fbc89',
-                ],
-                'securityGroups': [
-                    'sg-07f31eb2e5e9b49ea',
-                ],
-                'assignPublicIp': 'ENABLED', #'ENABLED'|'DISABLED'
-            }
-        },
-        overrides={
-            'containerOverrides': [
-                {
-                    'name': 'Worker',
-                    'environment': [
-                        #{'name': 'COORDINATOR_HOST_PORT', 'value': '172.31.11.146'},
-                        {'name': 'MODE','value': 'WORKER'},
-                    ]
-                }
-            ]
-        },
-        referenceId=None,
+        region_name=settings["region_name"],
+        aws_access_key_id=settings["aws_access_key_id"],
+        aws_secret_access_key=settings["aws_secret_access_key"],
+        task_id=settings["task_id"],
+        cluster=settings["cluster"],
+        count=settings["count"],
+        group=settings["group"],
+        launchType=settings["launchType"],
+        networkConfiguration=settings["networkConfiguration"],
+        overrides=settings["overrides"],
+        referenceId=settings["referenceId"],
         # This ID is how we know what to spin down when we are finished
         startedBy='airflow-' + str(uuid.uuid4()),
-        taskDefinition='PrestoWorkers',
+        taskDefinition=settings["taskDefinition"],
         query='select * from default.ny_pub LIMIT 10;'
-
     )
     t0 >> t1
