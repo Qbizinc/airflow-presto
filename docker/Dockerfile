@@ -43,4 +43,4 @@ ENV LANG en_US.UTF-8
 RUN aws --version
 
 RUN chmod +x /usr/lib/presto/bin/run-presto
-CMD [ "/usr/lib/presto/bin/run-presto" ]
+CMD [ "/usr/lib/presto/bin/run-ecs-presto" ]

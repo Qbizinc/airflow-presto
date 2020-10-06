@@ -2,12 +2,14 @@
 
 NODE_ID=$(uuidgen)
 ARGS="-Dnode.id=${NODE_ID}"
-#SERVICE_HOST=$(dig  +short -t srv  coordinator.coordinator | cut -f4 -d\  )
 if [[ $MODE == "WORKER" ]]
   then
   DISCOVERY_URI="-Ddiscovery.uri=http://${COORDINATOR_HOST_PORT}/"
   /usr/lib/presto/bin/launcher run $ARGS $DISCOVERY_URI \
     --etc-dir=/usr/lib/presto/default/etc/worker
+elif [[ $MODE == "CLIENT"]]
+  then
+  presto --server ${COORDINATOR_HOST_PORT} $QUERY
 else
   /usr/lib/presto/bin/launcher run $ARGS --etc-dir=/usr/lib/presto/default/etc/coordinator
 fi
