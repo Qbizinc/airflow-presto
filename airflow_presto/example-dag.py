@@ -28,7 +28,7 @@ with DAG('example_dag',
          max_active_runs=1,
          schedule_interval=timedelta(days=1),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
          default_args=default_args,
-         catchup=False # enable if you don't want historical dag runs to run
+         catchup=True # enable if you don't want historical dag runs to run
          ) as dag:
 
     t0 = DummyOperator(
@@ -47,8 +47,9 @@ with DAG('example_dag',
         overrides=settings["overrides"],
         referenceId=settings["referenceId"],
         # This ID is how we know what to spin down when we are finished
-        startedBy='airflow-' + str(uuid.uuid4() ,
+        startedBy='airflow-' + str(uuid.uuid4()) ,
         taskDefinition=settings["taskDefinition"],
         query='select * from default.ny_pub LIMIT 10;'
     )
+
     t0 >> t1
