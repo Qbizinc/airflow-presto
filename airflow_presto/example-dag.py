@@ -1,8 +1,15 @@
-import os
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
-from operators.presto_kubernetes_operator import PrestoKubernetesOperator
+from airflow.operators.bash_operator import BashOperator
+from airflow.operators.python_operator import PythonOperator
+from operators.presto_ecs_operator import ECSOperator
+
 from datetime import datetime, timedelta
+from airflow.hooks.presto_hook import PrestoHook
+import json, uuid
+
+with open('settings.json', 'r') as f:
+    settings = json.load(f)
 
 
 # Default settings applied to all tasks
@@ -17,34 +24,32 @@ default_args = {
 
 # Using a DAG context manager, you don't have to specify the dag property of each task
 with DAG('example_dag',
-         start_date=datetime(2020, 8, 1),
-         max_active_runs=3,
+         start_date=datetime(2020, 10, 6),
+         max_active_runs=1,
          schedule_interval=timedelta(days=1),  # https://airflow.apache.org/docs/stable/scheduler.html#dag-runs
          default_args=default_args,
-         catchup=False  # enable if you don't want historical dag runs to run
+         catchup=True # enable if you don't want historical dag runs to run
          ) as dag:
 
     t0 = DummyOperator(
         task_id='start'
     )
-
-    presto_kubernetes_op = PrestoKubernetesOperator(
-        sql="SELECT '{{ds}}';",
-        output_path='s3://etlresults/test_table/{{ds}}.csv',
-        namespace='default',
-        image="<aws_account>.dkr.ecr.us-east-1.amazonaws.com/presto-airflow:latest",
-        labels={"project": "presto-airflow"},
-        name="presto-output-test",
-        task_id="presto-output-task",
-        get_logs=True,
-        dag=dag,
-        config_file=os.environ['AIRFLOW_HOME'] + '/.kube/config',
-        in_cluster=False,
-        execution_timeout=timedelta(hours=1),
+    t1 = ECSOperator(
+        region_name=settings["region_name"],
+        aws_access_key_id=settings["aws_access_key_id"],
+        aws_secret_access_key=settings["aws_secret_access_key"],
+        task_id=settings["task_id"],
+        cluster=settings["cluster"],
+        count=settings["count"],
+        group=settings["group"],
+        launchType=settings["launchType"],
+        networkConfiguration=settings["networkConfiguration"],
+        overrides=settings["overrides"],
+        referenceId=settings["referenceId"],
+        # This ID is how we know what to spin down when we are finished
+        startedBy='airflow-' + str(uuid.uuid4()) ,
+        taskDefinition=settings["taskDefinition"],
+        query='select * from default.ny_pub LIMIT 10;'
     )
 
-    t1 = DummyOperator(
-        task_id='end'
-    )
-
-    t0 >> presto_kubernetes_op >> t1
+    t0 >> t1

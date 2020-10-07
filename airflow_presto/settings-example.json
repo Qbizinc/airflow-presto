@@ -1,0 +1,33 @@
+{
+"aws_access_key_id": null,
+"aws_secret_access_key": null,
+"region_name": null,
+"task_id": null,
+"cluster": null,
+"count": null,
+"group": null,
+"launchType": null,
+"networkConfiguration": {
+    "awsvpcConfiguration": {
+        "subnets": [
+            null
+        ],
+        "securityGroups": [
+            null
+        ],
+        "assignPublicIp": null
+    }
+},
+"overrides": {
+    "containerOverrides": [
+        {
+            "name": "Worker",
+            "environment": [
+                {"name": "MODE","value": "WORKER"}
+            ]
+        }
+    ]
+},
+"referenceId": null,
+"taskDefinition": null
+}
