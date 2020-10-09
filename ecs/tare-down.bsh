@@ -1,0 +1,61 @@
+#!/bin/bash
+
+set -e
+
+. base-env.bsh
+. ammended-env.bsh
+
+IMAGE_OBJ_LIST=$(aws ecr list-images \
+  --repository-name $REPOSITORY_NAME)
+
+echo "Deleting task definition and versions."
+for image_digest in $(echo $IMAGE_OBJ_LIST | jq  ".imageIds" | jq -rc ".[].imageDigest")
+do
+  aws ecr batch-delete-image --repository-name $REPOSITORY_NAME --image-ids imageDigest=$image_digest > /dev/null
+done
+
+echo "Deleting ECR Repo."
+aws ecr delete-repository \
+  --repository-name $REPOSITORY_NAME > /dev/null
+
+echo "Removing policy from $SERVICE_NAME"
+aws iam detach-role-policy \
+  --role-name $SERVICE_NAME \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+echo "Removing policy from $SERVICE_NAME"
+aws iam detach-role-policy \
+  --role-name $SERVICE_NAME \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+
+echo "Deleting IAM Role: $SERVICE_NAME."
+aws iam delete-role \
+  --role-name $SERVICE_NAME
+
+echo "Removing policy from $TASK_EXECUTION_NAME"
+aws iam detach-role-policy \
+  --role-name $TASK_EXECUTION_NAME \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+echo "Deleting IAM Role: $TASK_EXECUTION_NAME."
+aws iam delete-role \
+  --role-name $TASK_EXECUTION_NAME
+
+echo "Deleting ECS Cluster."
+aws ecs delete-cluster \
+  --cluster "$BASE_NAME-Presto-Cluster" > /dev/null
+
+echo "Deleting security group."
+aws ec2 delete-security-group \
+  --group-id $SECURITY_GROUP_ID
+
+# Need to find all revisions.
+TASK_FAMILY_OBJ=$(aws ecs list-task-definitions \
+  --family-prefix $TASK_DEFINITION_NAME)
+
+echo "Deleting task definition and versions."
+for task_def_arn in $(echo $TASK_FAMILY_OBJ | jq  ".taskDefinitionArns" | jq -rc ".[]")
+do
+  aws ecs deregister-task-definition \
+    --task-definition $task_def_arn > /dev/null
+done

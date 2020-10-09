@@ -1,6 +1,7 @@
 FROM centos:centos7
 LABEL maintainer="Presto community <https://prestosql.io/community.html>"
 
+# yum -y -q install  && \
 ENV JAVA_HOME /usr/lib/jvm/java-11
 ARG PRESTO_VERSION=339
 RUN \
@@ -26,6 +27,10 @@ COPY bin/ /usr/lib/presto/bin/
 COPY default/ /usr/lib/presto/default
 RUN chown -R presto:presto /usr/lib/presto
 RUN ls -la /usr/bin/presto
+RUN ln -s /usr/lib/presto/default/etc/catalog /usr/lib/presto/default/etc/coordinator/catalog
+RUN mkdir -p /etc/sysconfig/network-scripts/
+RUN ln -s /usr/lib/presto/default/etc/catalog /usr/lib/presto/default/etc/worker/catalog
+RUN echo "DHCP_HOSTNAME=presto-coordinator" >> /etc/sysconfig/network-scripts/ifcfg-eth0
 
 RUN pip install --upgrade pip && \
     pip install awscli
@@ -37,4 +42,5 @@ ENV LANG en_US.UTF-8
 # Test AWS
 RUN aws --version
 
-CMD [ "/usr/lib/presto/bin/run-presto" ]
+RUN chmod +x /usr/lib/presto/bin/run-presto
+CMD [ "/usr/lib/presto/bin/run-ecs-presto" ]
