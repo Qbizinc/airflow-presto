@@ -16,7 +16,7 @@
                 ""
             ],
             "command": [
-                "/usr/lib/presto/bin/run-presto"
+                "/usr/lib/presto/bin/run-ecs-presto"
             ],
             "environment": [
                 {
@@ -30,7 +30,7 @@
             "privileged": false,
             "healthCheck": {
                 "command": [
-                    "/bin/bash, curl http://localhost:8080 || exit 1"
+                    "curl http://localhost:8080"
                 ],
                 "interval": 180,
                 "timeout": 10,

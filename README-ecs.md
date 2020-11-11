@@ -10,7 +10,6 @@ System Administrators agree to allow (most large companies will not
 authorize applications to create and destroy EC2 instances to control
 costs and manage risk).  These instructions assume Administrators will
 allow the creation and deletion of resource managed by [Fargate](https://aws.amazon.com/fargate/),
-Amazon's managed compute service that doesn't incur a cost while idle.  
 
 ## Things that you will need.
 These instructions require the following:

@@ -1,20 +1,25 @@
 # Airflow ECS-Presto Operator
 
 ## Overview
-This airflow operator manages the compute resources for you presto cluster,  as well as executing queries.  It manages all steps in a single airflow task.  Out of the box,  it works by:
-- Starting the coordinator cluster
-    - Capturing the public/private ip adress(es) of the the coordinator
-    - registering the ip of the coordinator to airflow connections
-- Starting the worker nodes
-- Executing your query to the coordinator
-- Stopping all coordinator/workers
-- unregistering the airflow connection
+This airflow operator manages the compute resources for you presto cluster,
+as well as executing queries.  It manages all steps in a single airflow task.
+Out of the box,  it works by:
+- Starting the coordinator node.
+- Capturing the public/private ip adress(es) of the the coordinator.
+- Starting the worker nodes.
+- Executing your query to the coordinator.
+- Stopping all coordinator/workers.
 
 ## Prerequisites
-- Docker image(s) for your coordinator and worker
+- Docker image(s) for your coordinator and workers.
 - ECS Cluster to manage the containers
-- Task Definition(s) for ECS to orchestrate
-- Hive Metadata (glue)
+- Task Definition(s) for ECS to orchestrate.
+- Access to Hive Metadata (glue).
+- Airflow, compute resource must allow the following IAM policies:
+-- the ability create tasks on the ECS cluster, e.g. _AmazonECS_FullAccess_.
+-- the ability to access the Elastic Container Registry, e.g. _AmazonEC2ContainerRegistryFullAccess_.
+-- the ability to read/write data to S3, e.g. _AmazonS3FullAccess_.
+-- the ability to access the AWS Glue service (Hive metadata store), e.g. _AWSGlueServiceRole_.
 
 ## Parameters overview
 
@@ -35,7 +40,7 @@ This airflow operator manages the compute resources for you presto cluster,  as 
 
 `overrides` - a dictionary for docker container overrides
 
-- `containerOverrides` 
+- `containerOverrides`
     - `name` - name of the image.  example dag uses 'Worker'
         - `environment` - for overriding environment variables
         - The example dag uses "MODE": "WORKER
