@@ -1,6 +1,7 @@
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
-from operators.presto_ecs_operator import ECSOperator
+# from operators.presto_ecs_operator import ECSOperator
+from qbizinc.airflow import ECSOperator
 
 from datetime import datetime, timedelta
 import json, uuid
