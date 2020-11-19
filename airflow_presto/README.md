@@ -23,14 +23,14 @@ Out of the box,  it works by:
 
 ## Parameters overview
 
-`task_id`  - Required for airflow dags
-`region_name` - aws configuration
-`aws_access_key_id` - aws configuration
-`aws_secret_access_key` - aws configuration
-`cluster` - The name or ARN of you ecs cluster
-`count` - How many worker nodes you would like to launch
-`group` - A group name to easily identify all related nodes.  However you would like to logically group
-`launchType` - 'EC2'|'FARGATE'  The example uses fargate
+`task_id`  - Required for airflow dags -- task name.
+`region_name` - aws region short name, e.g. _us-west-2_.
+`cluster` - The name or ARN of you ECS cluster.
+`count` - How many nodes you would like to launch.
+`group` - A group name to easily identify all related nodes -- however you would
+  like to logically group.  This tag is used to identify nodes started by the
+  operator, when stopping the nodes.
+`launchType` - 'EC2'|'FARGATE'  The example uses fargate.
 `networkConfiguration` - a dictionary for network configuration:
 
 - `awsvpcConfiguration`
@@ -41,16 +41,15 @@ Out of the box,  it works by:
 `overrides` - a dictionary for docker container overrides
 
 - `containerOverrides`
-    - `name` - name of the image.  example dag uses 'Worker'
+    - `name` - name of the image.  example dag uses 'Presto'
         - `environment` - for overriding environment variables
         - The example dag uses "MODE": "WORKER
             - `name` - env var name
             - `value` - env var value
 
-`referenceId` - TODO: Not actually sure how this works, can maybe remove
-`startedBy` - The way you want to identify "who" started this cluster.  This is used in order to identify which clusters should be removed.  So we add a uuid to the name to logically separate simultaneous/independent queries
-`taskDefinition` - The name or ARN of your task definition
-`query` - The query you'd like to send to presto
+`startedBy` - The way you want to identify "who" started this cluster.  This is used in order to identify which clusters should be removed.  So we add a uuid to the name to logically separate simultaneous/independent queries.
+`taskDefinition` - The name or ARN of your task definition.
+`query` - The query you'd like to send to presto.
 
 ## Operator execution
 #### Customization

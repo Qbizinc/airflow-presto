@@ -1,3 +1,4 @@
+from airflow.plugins_manager import AirflowPlugin
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
 from airflow.exceptions import AirflowException
@@ -68,15 +69,20 @@ class ECSOperator(BaseOperator):
         self.log.info(f"Retrieving tasks associated with {self.startedBy} in {self.params['cluster']}")
         tasks = self.client.list_tasks(cluster=self.params["cluster"], startedBy=self.startedBy)['taskArns']
         self.log.info(f"Tasks marked for stopping: {tasks}")
-        for task in tasks:
-            self.log.info(f"Stopping task: {task}")
-            response = self.client.stop_task(
-                cluster=self.params["cluster"],
-                task=task,
-                reason="Query Complete"
-            )
-        waiter = self.client.get_waiter('tasks_stopped')
-        waiter.wait(cluster=self.params["cluster"], tasks=tasks)
+        try:
+            for task in tasks:
+                self.log.info(f"Stopping task: {task}")
+                response = self.client.stop_task(
+                    cluster=self.params["cluster"],
+                    task=task,
+                    reason="Query Complete"
+                )
+            waiter = self.client.get_waiter('tasks_stopped')
+            waiter.wait(cluster=self.params["cluster"], tasks=tasks)
+        except Exception as e:
+            self.log.critical('*** ECSOperator failed to spin down resources ***')
+            raise(e)
+
         self.log.info('Tasks succesfully spun down')
         return None
 
@@ -189,3 +195,7 @@ class ECSOperator(BaseOperator):
                 self.log.critical(f"Check ECS cluster {self.params['cluster']} for idle tasks")
                 self.log.critical(f"Tasks started by {self.startedBy}")
                 raise e2
+
+class MyAirflowPlugin(AirflowPlugin):
+    name = 'qbizinc'
+    operators = [ECSOperator]
