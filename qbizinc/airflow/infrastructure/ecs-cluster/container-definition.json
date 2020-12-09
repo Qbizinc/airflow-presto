@@ -1,0 +1,40 @@
+    [
+        {
+            "name": "Presto",
+            "image": "907770664110.dkr.ecr.us-west-2.amazonaws.com/soren-presto-testing",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "hostPort": 8080,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "entryPoint": [
+                ""
+            ],
+            "command": [
+                "/usr/lib/presto/bin/run-ecs-presto"
+            ],
+            "environment": [
+                {
+                    "name": "MODE",
+                    "value": "COORDINATOR"
+                }
+            ],
+            "startTimeout": 600,
+            "stopTimeout": 90,
+            "workingDirectory": "/home/presto",
+            "privileged": false,
+            "healthCheck": {
+                "command": [
+                    "curl http://localhost:8080"
+                ],
+                "interval": 180,
+                "timeout": 10,
+                "retries": 3,
+                "startPeriod": 60
+            }
+        }
+    ]
