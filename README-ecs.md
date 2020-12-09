@@ -11,20 +11,26 @@ authorize applications to create and destroy EC2 instances to control
 costs and manage risk).  These instructions assume Administrators will
 allow the creation and deletion of resource managed by [Fargate](https://aws.amazon.com/fargate/),
 
-## Things that you will need.
-These instructions require the following:
+## AWS Services
+The ECSOperator requires and ECS cluster, Task Definition and supporting services.  
+The following services can be created using the AWS Console, Terraform scripts
+which can be found at _qbizinc/airflow/infrastructure/ecs-cluster_, or the CLI
+commands found below.  The followingis for your reference if you chose to use the AWS console.
 1. An [Elastic Container Repository](https://aws.amazon.com/ecr/)
    (ECR) where a Presto Docker image will be
    stored.  The image will be pulled into a container when a resource is
    instantiated.  
 1. An [Elastic Container Service](https://aws.amazon.com/ecs/) (ECS) Cluster.
-1. A [Task Definition](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html), which is the configuration for your containers and
+1. A [Task Definition](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html),
+   which is the configuration for your containers and
    resources.  In it, you will specify where the Docker image is stored
    (ECR), Docker configurations -- environment variables, mounts, etc... --
    Fargate resources -- such as the cpu and memory of the virtual EC2 instance --
     and the AWS Service Role the container will use while running.
-1. An [AWS Service](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-service.html) Role for ECS Tasks, which allows access to AWS Glue and S3.
-1. An [AWS S3](https://aws.amazon.com/s3/) bucket with some data.
+1. An [AWS Service Role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-service.html)
+   for ECS Tasks to use, which allows access to AWS Glue and S3.
+1. An [AWS S3](https://aws.amazon.com/s3/) bucket with some data.  For our own testing,
+   we use the publicly accessible data for taxi rides at s3://serverless-analytics/canonical/NY-Pub/.
 1. An [AWS Glue](https://aws.amazon.com/glue/features/) database, with one or more tables defined for the data stored on
    S3.  You may need to define a Crawler to expose the data on S3 to Glue.
 
