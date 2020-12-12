@@ -1,5 +1,4 @@
-{
-    "containerDefinitions": [
+    [
         {
             "name": "Presto",
             "image": "907770664110.dkr.ecr.us-west-2.amazonaws.com/soren-presto-testing",
@@ -16,7 +15,7 @@
                 ""
             ],
             "command": [
-                "/usr/lib/presto/bin/run-presto"
+                "/usr/lib/presto/bin/run-ecs-presto"
             ],
             "environment": [
                 {
@@ -30,7 +29,7 @@
             "privileged": false,
             "healthCheck": {
                 "command": [
-                    "/bin/bash, curl http://localhost:8080 || exit 1"
+                    "curl http://localhost:8080"
                 ],
                 "interval": 180,
                 "timeout": 10,
@@ -38,25 +37,4 @@
                 "startPeriod": 60
             }
         }
-    ],
-    "placementConstraints": [],
-    "memory": "30720",
-    "executionRoleArn":"arn:aws:iam::907770664110:role/sorenServiceRoleECS",
-    "family": "Soren-Test",
-    "requiresCompatibilities": [
-        "FARGATE"
-    ],
-    "networkMode": "awsvpc",
-    "cpu": "4096",
-    "volumes": [],
-    "tags": [
-        {
-            "key": "Owner",
-            "value": "Soren"
-        },
-        {
-            "key": "Project",
-            "value": "Presto"
-        }
     ]
-}
